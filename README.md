@@ -76,6 +76,12 @@ Once the compatible model is prepared, you can run the inference using the ML fr
 
 
 
+### Image Processing & Animation
+
+| Name | DEMO | Note |
+| ---- | ---- | ---- |
+| [ImageRotationDemo](ImageRotationDemo/) | <p align="center"><img src="Resource/imagerotation-demo-preview.gif" width="200"/></p> | iOS Swift app with image selection and rotation speed control using PHPickerViewController and Core Animation |
+
 ### Image Classification
 
 | Name | DEMO | Note |

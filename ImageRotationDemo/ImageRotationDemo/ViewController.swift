@@ -16,11 +16,16 @@ class ViewController: UIViewController {
     @IBOutlet weak var selectImageButton: UIButton!
     @IBOutlet weak var speedSlider: UISlider!
     @IBOutlet weak var speedLabel: UILabel!
+    @IBOutlet weak var pauseButton: UIButton!
     
     // MARK: - Properties
     private var rotationAnimation: CABasicAnimation?
     private var currentRotationSpeed: Float = 1.0
     private var isRotating = false
+    
+    // Add pause/resume functionality
+    private var isPaused = false
+    private var pauseButton: UIButton!
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -40,6 +45,9 @@ class ViewController: UIViewController {
         
         // Setup speed controls
         setupSpeedControls()
+        
+        // Setup pause button
+        setupPauseButton()
         
         // Setup constraints
         setupConstraints()
@@ -93,6 +101,20 @@ class ViewController: UIViewController {
         view.addSubview(speedLabel)
     }
     
+    private func setupPauseButton() {
+        pauseButton = UIButton(type: .system)
+        pauseButton.setTitle("暂停", for: .normal)
+        pauseButton.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        pauseButton.backgroundColor = UIColor.systemOrange
+        pauseButton.setTitleColor(.white, for: .normal)
+        pauseButton.layer.cornerRadius = 8
+        pauseButton.translatesAutoresizingMaskIntoConstraints = false
+        pauseButton.addTarget(self, action: #selector(pauseResumeButtonTapped), for: .touchUpInside)
+        pauseButton.isHidden = true // Initially hidden until image is selected
+        
+        view.addSubview(pauseButton)
+    }
+    
     private func setupConstraints() {
         NSLayoutConstraint.activate([
             // Select button constraints
@@ -109,7 +131,13 @@ class ViewController: UIViewController {
             
             // Speed label constraints
             speedLabel.bottomAnchor.constraint(equalTo: speedSlider.topAnchor, constant: -10),
-            speedLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            speedLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
+            
+            // Pause button constraints  
+            pauseButton.centerYAnchor.constraint(equalTo: speedLabel.centerYAnchor),
+            pauseButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40),
+            pauseButton.widthAnchor.constraint(equalToConstant: 60),
+            pauseButton.heightAnchor.constraint(equalToConstant: 32),
             
             // Speed slider constraints
             speedSlider.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -40),
@@ -128,9 +156,17 @@ class ViewController: UIViewController {
         currentRotationSpeed = sender.value
         speedLabel.text = String(format: "转速: %.1fx", currentRotationSpeed)
         
-        // Update rotation animation if currently rotating
-        if isRotating {
+        // Update rotation animation if currently rotating and not paused
+        if isRotating && !isPaused {
             startRotationAnimation()
+        }
+    }
+    
+    @objc private func pauseResumeButtonTapped() {
+        if isPaused {
+            resumeRotation()
+        } else {
+            pauseRotation()
         }
     }
     
@@ -161,11 +197,40 @@ class ViewController: UIViewController {
         // Add animation to image view
         imageView.layer.add(rotation, forKey: "rotation")
         isRotating = true
+        isPaused = false
+        pauseButton.setTitle("暂停", for: .normal)
+        pauseButton.backgroundColor = UIColor.systemOrange
     }
     
     private func stopRotationAnimation() {
         imageView.layer.removeAnimation(forKey: "rotation")
         isRotating = false
+        isPaused = false
+        pauseButton.isHidden = true
+    }
+    
+    private func pauseRotation() {
+        if isRotating {
+            imageView.layer.speed = 0
+            imageView.layer.timeOffset = imageView.layer.convertTime(CACurrentMediaTime(), from: nil)
+            isPaused = true
+            pauseButton.setTitle("继续", for: .normal)
+            pauseButton.backgroundColor = UIColor.systemGreen
+        }
+    }
+    
+    private func resumeRotation() {
+        if isPaused {
+            let pausedTime = imageView.layer.timeOffset
+            imageView.layer.speed = 1.0
+            imageView.layer.timeOffset = 0.0
+            imageView.layer.beginTime = 0.0
+            let timeSincePause = imageView.layer.convertTime(CACurrentMediaTime(), from: nil) - pausedTime
+            imageView.layer.beginTime = timeSincePause
+            isPaused = false
+            pauseButton.setTitle("暂停", for: .normal)
+            pauseButton.backgroundColor = UIColor.systemOrange
+        }
     }
 }
 
@@ -181,6 +246,7 @@ extension ViewController: PHPickerViewControllerDelegate {
             if let image = object as? UIImage {
                 DispatchQueue.main.async {
                     self?.imageView.image = image
+                    self?.pauseButton.isHidden = false // Show pause button when image is loaded
                     // Start rotation animation when image is loaded
                     self?.startRotationAnimation()
                 }
